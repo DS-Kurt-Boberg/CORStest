@@ -1,8 +1,8 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # python standard library
-import re, sys, ssl, signal, urllib2, urlparse, argparse, multiprocessing
+import re, sys, ssl, signal, urllib.request, urllib.error, urllib.parse, urllib.parse, argparse, multiprocessing
 
 # -------------------------------------------------------------------------------------------------
 
@@ -23,7 +23,7 @@ def main():
   try:
     urls = [line.rstrip() for line in open(args.infile)]
     procs = min(abs(int(args.p or 32)), len(urls)) or 1
-  except (IOError, ValueError) as e: print e; return
+  except (IOError, ValueError) as e: print (e); return
   # check domains/urls in parallel but clean exit on ctrl-c
   sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
   pool = multiprocessing.Pool(processes=procs)
@@ -37,7 +37,7 @@ def main():
 def check(url):
   if re.findall("^https://", url): args.s = True     # set protocol
   url = re.sub("^https?://", "", url)                # url w/o proto
-  host = urlparse.urlparse("//"+url).hostname or ""  # set hostname
+  host = urllib.parse.urlparse("//" + url).hostname or ""  # set hostname
   acao = cors(url, url, False, True)                 # perform request
   if acao:
     if args.q and (acao == "no_acac" or "*" == acao): return
@@ -65,25 +65,25 @@ def cors(url, origin, ssltest=False, firstrun=False):
   url = ("http://" if not (ssltest or args.s) else "https://") + url
   if origin != "null": origin = ("http://" if (ssltest or not args.s) else "https://") + origin
   try:
-    request = urllib2.Request(url)
+    request = urllib.request.Request(url)
     request.add_header('Origin', origin)
     request.add_header('Cookie', args.c or "")
     request.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 6.1; WOW64)')
-    if not "_create_unverified_context" in dir(ssl): response = urllib2.urlopen(request, timeout=10)
-    else: response = urllib2.urlopen(request, timeout=10, context=ssl._create_unverified_context())
-    acao = response.info().getheader('Access-Control-Allow-Origin')
-    acac = str(response.info().getheader('Access-Control-Allow-Credentials')).lower() == "true"
-    vary = "Origin" in str(response.info().getheader('Vary'))
-    if args.v: print "%s\n%-10s%s\n%-10s%s\n%-10s%s\n%-10s%s" % ("-" * 72, "Resource:", \
-               response.geturl(), "Origin:", origin, "ACAO:", acao or "-", "ACAC:", acac or "-")
+    if not "_create_unverified_context" in dir(ssl): response = urllib.request.urlopen(request, timeout=10)
+    else: response = urllib.request.urlopen(request, timeout=10, context=ssl._create_unverified_context())
+    acao = response.info().get('Access-Control-Allow-Origin')
+    acac = str(response.info().get('Access-Control-Allow-Credentials')).lower() == "true"
+    vary = "Origin" in str(response.info().get('Vary'))
+    if args.v: print("%s\n%-10s%s\n%-10s%s\n%-10s%s\n%-10s%s" % ("-" * 72, "Resource:", \
+        response.geturl(), "Origin:", origin, "ACAO:", acao or "-", "ACAC:", acac or "-"))
     if firstrun:
       if args.q and not acac: acao = "no_acac"
       if acac and acao != '*' and not args.q: alert(url, "Access-Control-Allow-Credentials present")
       if vary and not args.q: warning(url, "Access-Control-Allow-Origin dynamically generated")
-    if ssltest and response.info().getheader('Strict-Transport-Security'): acao = ""
+    if ssltest and response.info().get('Strict-Transport-Security'): acao = ""
     return (acao or "") if acac else ""
   except Exception as e:
-    if not args.q: error(url, e.message or str(e).splitlines()[-1])
+    if not args.q: error(url, str(e) or str(e).splitlines()[-1])
     if not firstrun: return ""
 
 # -------------------------------------------------------------------------------------------------
@@ -99,12 +99,12 @@ def sld(host):
 
 # -------------------------------------------------------------------------------------------------
 
-def error(url, msg): print "\x1b[2m" + url, "- Error:", msg + "\x1b[0m"
-def alert(url, msg): print "\x1b[97;41m" + url, "- Alert:", msg + "\x1b[0m"
-def invalid(url, msg): print "\x1b[30;43m" + url, "- Invalid:", msg + "\x1b[0m"
-def warning(url, msg): print "\x1b[30;48;5;202m" + url, "- Warning:", msg + "\x1b[0m"
-def notvuln(url, msg): print "\x1b[97;100m" + url, "- Not vulnerable:", msg + "\x1b[0m"
-def info(url, msg): print "\x1b[30;42m" + url, "- Access-Control-Allow-Origin:", msg + "\x1b[0m"
+def error(url, msg): print("\x1b[2m" + url, "- Error:", msg + "\x1b[0m")
+def alert(url, msg): print("\x1b[97;41m" + url, "- Alert:", msg + "\x1b[0m")
+def invalid(url, msg): print("\x1b[30;43m" + url, "- Invalid:", msg + "\x1b[0m")
+def warning(url, msg): print("\x1b[30;48;5;202m" + url, "- Warning:", msg + "\x1b[0m")
+def notvuln(url, msg): print("\x1b[97;100m" + url, "- Not vulnerable:", msg + "\x1b[0m")
+def info(url, msg): print("\x1b[30;42m" + url, "- Access-Control-Allow-Origin:", msg + "\x1b[0m")
 
 # -------------------------------------------------------------------------------------------------
 
