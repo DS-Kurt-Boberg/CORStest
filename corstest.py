@@ -3,6 +3,7 @@
 
 # python standard library
 import re, sys, ssl, signal, urllib.request, urllib.error, urllib.parse, urllib.parse, argparse, multiprocessing
+from itertools import product
 
 # -------------------------------------------------------------------------------------------------
 
@@ -29,7 +30,7 @@ def main():
   pool = multiprocessing.Pool(processes=procs)
   signal.signal(signal.SIGINT, sigint_handler)
   timeout = 3600
-  try: pool.map_async(check, urls).get(timeout)
+  try: pool.starmap(check, product(urls))
   except KeyboardInterrupt: pass
 
 # -------------------------------------------------------------------------------------------------
