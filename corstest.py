@@ -6,8 +6,6 @@ import re, sys, ssl, signal, urllib.request, urllib.error, urllib.parse, urllib.
 from itertools import product
 
 #python3 Windows compat
-if not hasattr(sys, 'argv'):
-    sys.argv = []
 
 # -------------------------------------------------------------------------------------------------
 
@@ -25,28 +23,30 @@ def usage():
 
 def main():
   global args; args = usage()
+  multiprocessing.set_start_method('spawn')
   try:
     urls = [line.rstrip() for line in open(args.infile)]
+    zipargs = [args] * len(urls)
+    payload = zip(urls,zipargs)
     procs = min(abs(int(args.p or 32)), len(urls)) or 1
   except (IOError, ValueError) as e: print (e); return
   # check domains/urls in parallel but clean exit on ctrl-c
   sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
   signal.signal(signal.SIGINT, sigint_handler)
-  timeout = 3600
   try:
     with multiprocessing.Pool(processes=procs) as pool:
-      pool.starmap(check, product(urls))
+      pool.starmap_async(check, payload).get()
   except KeyboardInterrupt: pass
 
 # -------------------------------------------------------------------------------------------------
 
 # check for vulns/misconfigurations
-def check(url):
+def check(url,args):
   if re.findall("^https://", url): args.s = True     # set protocol
   url = re.sub("^https?://", "", url)                # url w/o proto
   host = urllib.parse.urlparse("//" + url).hostname or ""  # set hostname
-  acao = cors(url, url, False, True)                 # perform request
+  acao = cors(args, url, url, False, True)                 # perform request
   if acao:
     if args.q and (acao == "no_acac" or "*" == acao): return
     if acao == "*": info(url, "* (without credentials)")
@@ -54,13 +54,13 @@ def check(url):
     elif re.findall("\s|,|\|", acao): invalid(url, "Multiple values in Access-Control-Allow-Origin")
     elif re.findall("\*.", acao): invalid(url, 'Wrong use of wildcard, only single "*" is valid')
     elif re.findall("fiddle.jshell.net|s.codepen.io", acao): alert(url, "Developer backdoor")
-    elif "evil.org" in cors(url, "evil.org"): alert(url, "Origin reflection")
-    elif "null" == cors(url, "null").lower(): alert(url, "Null misconfiguration")
-    elif host+".tk" in cors(url, host+".tk"): alert(url, "Post-domain wildcard")
-    elif "not"+host in cors(url, "not"+url):
+    elif "evil.org" in cors(args, url, "evil.org"): alert(url, "Origin reflection")
+    elif "null" == cors(args, url, "null").lower(): alert(url, "Null misconfiguration")
+    elif host+".tk" in cors(args, url, host+".tk"): alert(url, "Post-domain wildcard")
+    elif "not"+host in cors(args, url, "not"+url):
       alert(url, "Pre-domain wildcard") if sld(host) else warning(url, "Pre-subdomain wildcard")
-    elif "sub."+host in cors(url, "sub."+url): warning(url, "Arbitrary subdomains allowed")
-    elif cors(url, url, True).startswith("http://"): warning(url, "Non-ssl site allowed")
+    elif "sub."+host in cors(args, url, "sub."+url): warning(url, "Arbitrary subdomains allowed")
+    elif cors(args, url, url, True).startswith("http://"): warning(url, "Non-ssl site allowed")
     else: info(url, acao)
   elif acao != None and not args.q: notvuln(url, "Access-Control-Allow-Origin header not present")
   # TBD: maybe use CORS preflight options request instead to check if cors protocol is understood
@@ -69,7 +69,7 @@ def check(url):
 # -------------------------------------------------------------------------------------------------
 
 # perform request and fetch response header
-def cors(url, origin, ssltest=False, firstrun=False):
+def cors(args, url, origin, ssltest=False, firstrun=False):
   url = ("http://" if not (ssltest or args.s) else "https://") + url
   if origin != "null": origin = ("http://" if (ssltest or not args.s) else "https://") + origin
   try:
@@ -82,7 +82,7 @@ def cors(url, origin, ssltest=False, firstrun=False):
     acao = response.info().get('Access-Control-Allow-Origin')
     acac = str(response.info().get('Access-Control-Allow-Credentials')).lower() == "true"
     vary = "Origin" in str(response.info().get('Vary'))
-    if args.v: print("%s\n%-10s%s\n%-10s%s\n%-10s%s\n%-10s%s" % ("-" * 72, "Resource:", \
+    if args.v: print("%s\n%-10s%s\n%-10s%s\n%-10s%s\n%-10s%s" % ("-" * 72, "Resource:",
         response.geturl(), "Origin:", origin, "ACAO:", acao or "-", "ACAC:", acac or "-"))
     if firstrun:
       if args.q and not acac: acao = "no_acac"
