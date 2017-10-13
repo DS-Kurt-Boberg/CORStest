@@ -112,7 +112,7 @@ def cors(args, url, origin, ssltest=False, firstrun=False):
             if ssltest and response.info().get('Strict-Transport-Security'): acao = ""
         return (acao or "") if acac else ""
     except Exception as e:
-        if not args.q: error(url, str(e) or str(e).splitlines()[-1])
+        if not args.q: error(args.logfile, url, str(e) or str(e).splitlines()[-1])
         if not firstrun: return ""
 
 
