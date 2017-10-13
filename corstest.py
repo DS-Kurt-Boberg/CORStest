@@ -28,7 +28,8 @@ def main():
   sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
   pool = multiprocessing.Pool(processes=procs)
   signal.signal(signal.SIGINT, sigint_handler)
-  try: pool.map_async(check, urls).get(2**32)
+  timeout = 3600
+  try: pool.map_async(check, urls).get(timeout)
   except KeyboardInterrupt: pass
 
 # -------------------------------------------------------------------------------------------------
