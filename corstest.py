@@ -138,12 +138,12 @@ def log_to_file(filepath,text):
         file.writelines(text)
         file.writelines("\n")
 
-def error(filepath, url, msg):  result = "\x1b[2m" + url + "- Error: " + msg + "\x1b[0m";print(result);log_to_file(filepath,result)
-def alert(filepath, url, msg): result = "\x1b[97;41m" + url + "- Alert: " + msg + "\x1b[0m";print(result);log_to_file(filepath,result)
-def invalid(filepath, url, msg): result = "\x1b[30;43m" + url + "- Invalid: ", msg + "\x1b[0m";print(result);log_to_file(filepath,result)
-def warning(filepath, url, msg): result = "\x1b[30;48;5;202m" + url + "- Warning: " + msg + "\x1b[0m";print(result);log_to_file(filepath,result)
-def notvuln(filepath, url, msg): result = "\x1b[97;100m" + url + "- Not vulnerable: " + msg + "\x1b[0m";print(result);log_to_file(filepath,result)
-def info(filepath, url, msg): result = "\x1b[30;42m" + url + "- Access-Control-Allow-Origin: " + msg + "\x1b[0m";print(result);log_to_file(filepath,result)
+def error(filepath, url, msg):  result = "[ERROR] " + url + " : " + msg;print(result);log_to_file(filepath,result)
+def alert(filepath, url, msg): result = "[ALERT] " + url + " : " + msg;print(result);log_to_file(filepath,result)
+def invalid(filepath, url, msg): result = "[INVALID] " + url + " : " + msg;print(result);log_to_file(filepath,result)
+def warning(filepath, url, msg): result = "[WARNING] " + url + " : " + msg;print(result);log_to_file(filepath,result)
+def notvuln(filepath, url, msg): result = "[NOTVULNERABLE] " + url + " : " + msg;print(result);log_to_file(filepath,result)
+def info(filepath, url, msg): result = "[INFO] " + url + " : Access-Control-Allow-Origin = " + msg;print(result);log_to_file(filepath,result)
 
 # -------------------------------------------------------------------------------------------------
 
