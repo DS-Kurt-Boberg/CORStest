@@ -1,6 +1,11 @@
 ## CORStest
 ### A simple CORS misconfiguration scanner
 
+**FORK NOTES**
+
+This is a Python3 platform-agnostic version of the CORStest scanner hosted at https://github.com/RUB-NDS/CORStest
+Some output has been modified to better support CI integration.
+
 **Based on the research of [James Kettle](https://twitter.com/albinowax)**
 
 CORStest is a *quick & dirty* Python 2 tool to find Cross-Origin Resource Sharing ([CORS](https://www.w3.org/TR/cors/)) misconfigurations. It takes a text file as input which may contain a list of domain names or URLs. Currently, the following potential vulnerabilities are detected by sending a certain `Origin` request header and checking for the `Access-Control-Allow-Origin` response header:
