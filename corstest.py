@@ -5,6 +5,10 @@
 import re, sys, ssl, signal, urllib.request, urllib.error, urllib.parse, urllib.parse, argparse, multiprocessing
 from itertools import product
 
+#python3 Windows compat
+if not hasattr(sys, 'argv'):
+    sys.argv = []
+
 # -------------------------------------------------------------------------------------------------
 
 def usage():
@@ -27,10 +31,12 @@ def main():
   except (IOError, ValueError) as e: print (e); return
   # check domains/urls in parallel but clean exit on ctrl-c
   sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
-  pool = multiprocessing.Pool(processes=procs)
+
   signal.signal(signal.SIGINT, sigint_handler)
   timeout = 3600
-  try: pool.starmap(check, product(urls))
+  try:
+    with multiprocessing.Pool(processes=procs) as pool:
+      pool.starmap(check, product(urls))
   except KeyboardInterrupt: pass
 
 # -------------------------------------------------------------------------------------------------
