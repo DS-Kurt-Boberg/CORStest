@@ -13,7 +13,6 @@ def usage():
 
     parser = argparse.ArgumentParser(description="Simple CORS misconfigurations checker")
     parser.add_argument("infile", help="File with domain or URL list")
-    parser.add_argument("-logfile", help="File to log to", default="CORSlog.txt", required=False)
     parser.add_argument("-c", metavar="name=value", help="Send cookie with all requests")
     parser.add_argument("-p", metavar="processes", help="multiprocessing (default: 32)")
     parser.add_argument("-s", help="always force ssl/tls requests", action="store_true")
@@ -30,11 +29,7 @@ def main():
     global args; args = usage()
     # platform agnostic support, windows does not support os.fork()
     multiprocessing.set_start_method('spawn')
-    #wipe log file
-    logfile = args.logfile
-    if os.path.exists(logfile):
-        os.remove(logfile)
-    open(logfile,'x').close()
+
     try:
         urls = [line.rstrip() for line in open(args.infile)]
         zipargs = [args] * len(urls)
@@ -50,10 +45,6 @@ def main():
         with multiprocessing.Pool(processes=procs) as pool:
             pool.starmap_async(check, payload).get()
 
-        result_array = open(logfile).readlines()
-        if args.j == True:
-            return json.dumps(result_array)
-
     except KeyboardInterrupt: pass
 
 
@@ -68,20 +59,20 @@ def check(url,args):
     acao = cors(args, url, url, False, True)                 # perform request
     if acao:
         if args.q and (acao == "no_acac" or "*" == acao): return
-        if acao == "*": info(args.logfile, url, "* (without credentials)")
-        elif acao in ["//", "://"]: alert(args.logfile, url, "Any origin allowed") # firefox/chrome/safari/opera only
-        elif re.findall("\s|,|\|", acao): invalid(args.logfile, url, "Multiple values in Access-Control-Allow-Origin")
-        elif re.findall("\*.", acao): invalid(args.logfile, url, 'Wrong use of wildcard, only single "*" is valid')
-        elif re.findall("fiddle.jshell.net|s.codepen.io", acao): alert(args.logfile, url, "Developer backdoor")
-        elif "evil.org" in cors(args, url, "evil.org"): alert(args.logfile, url, "Origin reflection")
-        elif "null" == cors(args, url, "null").lower(): alert(args.logfile, url, "Null misconfiguration")
-        elif host+".tk" in cors(args, url, host+".tk"): alert(args.logfile, url, "Post-domain wildcard")
+        if acao == "*": info(url, "* (without credentials)")
+        elif acao in ["//", "://"]: alert(url, "Any origin allowed") # firefox/chrome/safari/opera only
+        elif re.findall("\s|,|\|", acao): invalid(url, "Multiple values in Access-Control-Allow-Origin")
+        elif re.findall("\*.", acao): invalid(url, 'Wrong use of wildcard, only single "*" is valid')
+        elif re.findall("fiddle.jshell.net|s.codepen.io", acao): alert(url, "Developer backdoor")
+        elif "evil.org" in cors(args, url, "evil.org"): alert(url, "Origin reflection")
+        elif "null" == cors(args, url, "null").lower(): alert(url, "Null misconfiguration")
+        elif host+".tk" in cors(args, url, host+".tk"): alert(url, "Post-domain wildcard")
         elif "not"+host in cors(args, url, "not"+url):
-            alert(url, "Pre-domain wildcard") if sld(host) else warning(args.logfile, url, "Pre-subdomain wildcard")
-        elif "sub."+host in cors(args, url, "sub."+url): warning(args.logfile, url, "Arbitrary subdomains allowed")
-        elif cors(args, url, url, True).startswith("http://"): warning(args.logfile, url, "Non-ssl site allowed")
-        else: info(args.logfile, url, acao)
-    elif acao != None and not args.q: notvuln(args.logfile, url, "Access-Control-Allow-Origin header not present")
+            alert(url, "Pre-domain wildcard") if sld(host) else warning(url, "Pre-subdomain wildcard")
+        elif "sub."+host in cors(args, url, "sub."+url): warning(url, "Arbitrary subdomains allowed")
+        elif cors(args, url, url, True).startswith("http://"): warning(url, "Non-ssl site allowed")
+        else: info(url, acao)
+    elif acao != None and not args.q: notvuln(url, "Access-Control-Allow-Origin header not present")
     # TBD: maybe use CORS preflight options request instead to check if cors protocol is understood
     sys.stdout.flush()
 
@@ -107,12 +98,12 @@ def cors(args, url, origin, ssltest=False, firstrun=False):
             response.geturl(), "Origin:", origin, "ACAO:", acao or "-", "ACAC:", acac or "-"))
         if firstrun:
             if args.q and not acac: acao = "no_acac"
-            if acac and acao != '*' and not args.q: alert(args.logfile, url, "Access-Control-Allow-Credentials present")
-            if vary and not args.q: warning(args.logfile, url, "Access-Control-Allow-Origin dynamically generated")
+            if acac and acao != '*' and not args.q: alert(url, "Access-Control-Allow-Credentials present")
+            if vary and not args.q: warning(url, "Access-Control-Allow-Origin dynamically generated")
             if ssltest and response.info().get('Strict-Transport-Security'): acao = ""
         return (acao or "") if acac else ""
     except Exception as e:
-        if not args.q: error(args.logfile, url, str(e) or str(e).splitlines()[-1])
+        if not args.q: error(url, str(e) or str(e).splitlines()[-1])
         if not firstrun: return ""
 
 
@@ -138,14 +129,20 @@ def log_to_file(filepath,text):
         file.writelines(text)
         file.writelines("\n")
 
-def error(filepath, url, msg):  result = "[ERROR] " + url + " : " + msg;print(result);log_to_file(filepath,result)
-def alert(filepath, url, msg): result = "[ALERT] " + url + " : " + msg;print(result);log_to_file(filepath,result)
-def invalid(filepath, url, msg): result = "[INVALID] " + url + " : " + msg;print(result);log_to_file(filepath,result)
-def warning(filepath, url, msg): result = "[WARNING] " + url + " : " + msg;print(result);log_to_file(filepath,result)
-def notvuln(filepath, url, msg): result = "[NOTVULNERABLE] " + url + " : " + msg;print(result);log_to_file(filepath,result)
-def info(filepath, url, msg): result = "[INFO] " + url + " : Access-Control-Allow-Origin = " + msg;print(result);log_to_file(filepath,result)
 
 # -------------------------------------------------------------------------------------------------
+
+
+def error(url, msg):  result = "[ERROR] " + url + " : " + msg;print(result)
+def alert(url, msg): result = "[ALERT] " + url + " : " + msg;print(result)
+def invalid(url, msg): result = "[INVALID] " + url + " : " + msg;print(result)
+def warning(url, msg): result = "[WARNING] " + url + " : " + msg;print(result)
+def notvuln(url, msg): result = "[NOTVULNERABLE] " + url + " : " + msg;print(result)
+def info(url, msg): result = "[INFO] " + url + " : Access-Control-Allow-Origin = " + msg;print(result)
+
+
+# -------------------------------------------------------------------------------------------------
+
 
 if __name__ == '__main__':
     main()
