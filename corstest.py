@@ -50,11 +50,9 @@ def main():
         with multiprocessing.Pool(processes=procs) as pool:
             pool.starmap_async(check, payload).get()
 
+        result_array = open(logfile).readlines()
         if args.j == True:
             return json.dumps(result_array)
-        else:
-            for result in result_array:
-                print(result)
 
     except KeyboardInterrupt: pass
 
